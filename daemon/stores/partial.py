@@ -150,7 +150,7 @@ class PartialFlowStore(PartialStore):
                                                     random_port(),
                                                 ),
                                             )
-                            # Update replica_args according to updated head & tail args
+                            # Update shard_args according to updated head & tail args
                             pod.assign_shards()
                 else:
                     # avoid setting runs_in_docker for Pods with parallel > 1 and using `ZEDRuntime`

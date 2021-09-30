@@ -1014,8 +1014,13 @@ class Flow(PostMixin, JAMLCompatible, ExitStack, metaclass=FlowType):
                 # dynamic routing does not apply to shards in a CompoundPod, only its tail
                 if not isinstance(self._pod_nodes[pod], CompoundPod):
                     self._pod_nodes[pod].update_pea_args()
-                # else:
-                #    self._pod_nodes[pod].update_tail_args()
+                else:
+                    self._pod_nodes[pod].tail_args.routing_table = self._pod_nodes[
+                        pod
+                    ].args.routing_table
+                    self._pod_nodes[
+                        pod
+                    ].tail_args.static_routing_table = self.args.static_routing_table
 
     @allowed_levels([FlowBuildLevel.EMPTY])
     def build(self, copy_flow: bool = False) -> 'Flow':

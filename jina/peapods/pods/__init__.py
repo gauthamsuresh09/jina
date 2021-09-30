@@ -255,7 +255,7 @@ class BasePod:
             else:
                 _tail_args.name = f'tail'
             _tail_args.pea_role = PeaRoleType.TAIL
-            _tail_args.num_part = 1 if polling_type.is_push else args.replicas
+            _tail_args.num_part = 1
 
         Pod._set_dynamic_routing_out(_tail_args)
 

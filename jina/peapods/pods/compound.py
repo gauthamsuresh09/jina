@@ -39,7 +39,7 @@ class CompoundPod(BasePod, ExitStack):
         self.is_head_router = True
         self.is_tail_router = True
         self.head_args = BasePod._copy_to_head_args(args, args.polling)
-        self.update_tail_args()
+        self.tail_args = BasePod._copy_to_tail_args(self.args, self.args.polling)
         self.assign_shards()
 
     def assign_shards(self):
@@ -51,12 +51,6 @@ class CompoundPod(BasePod, ExitStack):
             if getattr(self.args, 'noblock_on_start', False):
                 _args.noblock_on_start = True
             self.shards.append(Pod(_args))
-
-    def update_tail_args(self):
-        """
-        Sets the tail args based on the current args
-        """
-        self.tail_args = BasePod._copy_to_tail_args(self.args, self.args.polling)
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         super().__exit__(exc_type, exc_val, exc_tb)
