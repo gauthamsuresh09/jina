@@ -259,7 +259,7 @@ class Flow(PostMixin, JAMLCompatible, ExitStack, metaclass=FlowType):
         :param quiet: If set, then no log will be emitted from this object.
         :param quiet_error: If set, then exception stack information will not be added to the log
         :param runs_in_docker: Informs a Pea that runs in a container. Important to properly set networking information
-        :param runtime_backend: The parallel backend of the runtime inside the Pea
+        :param runtime_backend: The shards backend of the runtime inside the Pea
         :param runtime_cls: The runtime class to run inside the Pea
         :param socket_in: The socket type for input port
         :param socket_out: The socket type for output port
@@ -539,7 +539,7 @@ class Flow(PostMixin, JAMLCompatible, ExitStack, metaclass=FlowType):
         name: Optional[str] = None,
         native: Optional[bool] = False,
         on_error_strategy: Optional[str] = 'IGNORE',
-        parallel: Optional[int] = 1,
+        shards: Optional[int] = 1,
         peas_hosts: Optional[List[str]] = None,
         polling: Optional[str] = 'ANY',
         port_ctrl: Optional[int] = None,
@@ -623,11 +623,11 @@ class Flow(PostMixin, JAMLCompatible, ExitStack, metaclass=FlowType):
 
           Note, `IGNORE`, `SKIP_EXECUTOR` and `SKIP_HANDLE` do not guarantee the success execution in the sequel flow. If something
           is wrong in the upstream, it is hard to carry this exception and moving forward without any side-effect.
-        :param parallel: The number of parallel peas in the pod running at the same time, `port_in` and `port_out` will be set to random, and routers will be added automatically when necessary
-        :param peas_hosts: The hosts of the peas when parallel greater than 1.
+        :param shards: The number of shards peas in the pod running at the same time, `port_in` and `port_out` will be set to random, and routers will be added automatically when necessary
+        :param peas_hosts: The hosts of the peas when shards greater than 1.
                   Peas will be evenly distributed among the hosts. By default,
                   peas are running on host provided by the argument ``host``
-        :param polling: The polling strategy of the Pod (when `parallel>1`)
+        :param polling: The polling strategy of the Pod (when `shards>1`)
           - ANY: only one (whoever is idle) Pea polls the message
           - ALL: all Peas poll the message (like a broadcast)
         :param port_ctrl: The port for controlling the runtime, default a random port between [49152, 65535]
@@ -646,7 +646,7 @@ class Flow(PostMixin, JAMLCompatible, ExitStack, metaclass=FlowType):
         :param quiet_remote_logs: Do not display the streaming of remote logs on local console
         :param replicas: The number of replicas in the pod, `port_in` and `port_out` will be set to random, and routers will be added automatically when necessary
         :param runs_in_docker: Informs a Pea that runs in a container. Important to properly set networking information
-        :param runtime_backend: The parallel backend of the runtime inside the Pea
+        :param runtime_backend: The shards backend of the runtime inside the Pea
         :param runtime_cls: The runtime class to run inside the Pea
         :param scheduling: The strategy of scheduling workload among Peas
         :param socket_in: The socket type for input port
@@ -676,8 +676,8 @@ class Flow(PostMixin, JAMLCompatible, ExitStack, metaclass=FlowType):
                   When use it under Python, one can use the following values additionally:
                   - a Python dict that represents the config
                   - a text file stream has `.read()` interface
-        :param uses_after: The executor attached after the Peas described by --uses, typically used for receiving from all parallels, accepted type follows `--uses`
-        :param uses_before: The executor attached after the Peas described by --uses, typically before sending to all parallels, accepted type follows `--uses`
+        :param uses_after: The executor attached after the Peas described by --uses, typically used for receiving from all shardss, accepted type follows `--uses`
+        :param uses_before: The executor attached after the Peas described by --uses, typically before sending to all shardss, accepted type follows `--uses`
         :param uses_metas: Dictionary of keyword arguments that will override the `metas` configuration in `uses`
         :param uses_requests: Dictionary of keyword arguments that will override the `requests` configuration in `uses`
         :param uses_with: Dictionary of keyword arguments that will override the `with` configuration in `uses`
@@ -1011,7 +1011,11 @@ class Flow(PostMixin, JAMLCompatible, ExitStack, metaclass=FlowType):
             elif self.args.static_routing_table:
                 routing_table_copy.active_pod = pod
                 self._pod_nodes[pod].args.routing_table = routing_table_copy.json()
-                self._pod_nodes[pod].update_pea_args()
+                # dynamic routing does not apply to shards in a CompoundPod, only its tail
+                if not isinstance(self._pod_nodes[pod], CompoundPod):
+                    self._pod_nodes[pod].update_pea_args()
+                # else:
+                #    self._pod_nodes[pod].update_tail_args()
 
     @allowed_levels([FlowBuildLevel.EMPTY])
     def build(self, copy_flow: bool = False) -> 'Flow':
@@ -1244,7 +1248,7 @@ class Flow(PostMixin, JAMLCompatible, ExitStack, metaclass=FlowType):
 
     @property
     def num_peas(self) -> int:
-        """Get the number of peas (parallel count) in this Flow
+        """Get the number of peas (shards count) in this Flow
 
 
         .. # noqa: DAR201"""

@@ -255,7 +255,7 @@ class BasePod:
             else:
                 _tail_args.name = f'tail'
             _tail_args.pea_role = PeaRoleType.TAIL
-            _tail_args.num_part = 1 if polling_type.is_push else args.parallel
+            _tail_args.num_part = 1 if polling_type.is_push else args.replicas
 
         Pod._set_dynamic_routing_out(_tail_args)
 
@@ -312,7 +312,7 @@ class BasePod:
 
 
 class Pod(BasePod, ExitFIFO):
-    """A BasePod is an immutable set of peas, which run in parallel. They share the same input and output socket.
+    """A BasePod is an immutable set of peas, which run in replicas. They share the same input and output socket.
     Internally, the peas can run with the process/thread backend. They can be also run in their own containers
     :param args: arguments parsed from the CLI
     :param needs: pod names of preceding pods, the output of these pods are going into the input of this pod
@@ -557,18 +557,18 @@ class Pod(BasePod, ExitFIFO):
             ]
         )
 
-        for idx, pea_host in zip(range(args.parallel), cycle(_host_list)):
+        for idx, pea_host in zip(range(args.replicas), cycle(_host_list)):
             _args = copy.deepcopy(args)
             _args.pea_id = idx
 
-            if args.parallel > 1:
+            if args.replicas > 1:
                 _args.pea_role = PeaRoleType.PARALLEL
                 _args.identity = random_identity()
 
                 if _args.peas_hosts:
                     _args.host = pea_host
                 if _args.name:
-                    _args.name += f'/pea-{idx}'
+                    _args.name += f'/rep-{idx}'
                 else:
                     _args.name = f'{idx}'
             else:
@@ -579,19 +579,10 @@ class Pod(BasePod, ExitFIFO):
             if tail_args:
                 _args.port_out = tail_args.port_in
             _args.port_ctrl = helper.random_port()
-            _args.socket_out = SocketType.PUSH_CONNECT
-            if args.polling.is_push:
-                if args.scheduling == SchedulerType.ROUND_ROBIN:
-                    _args.socket_in = SocketType.PULL_CONNECT
-                elif args.scheduling == SchedulerType.LOAD_BALANCE:
-                    _args.socket_in = SocketType.DEALER_CONNECT
-                else:
-                    raise ValueError(
-                        f'{args.scheduling} is not supported as a SchedulerType!'
-                    )
 
-            else:
-                _args.socket_in = SocketType.SUB_CONNECT
+            _args.socket_out = SocketType.PUSH_CONNECT
+            _args.socket_in = SocketType.DEALER_CONNECT
+
             if head_args:
                 _args.host_in = get_connect_host(
                     bind_host=head_args.host,
@@ -617,13 +608,13 @@ class Pod(BasePod, ExitFIFO):
 
     def _parse_base_pod_args(self, args):
         parsed_args = {'head': None, 'tail': None, 'peas': []}
-        if getattr(args, 'parallel', 1) > 1:
+        if getattr(args, 'replicas', 1) > 1:
             # reasons to separate head and tail from peas is that they
             # can be deducted based on the previous and next pods
             self.is_head_router = True
             self.is_tail_router = True
-            parsed_args['head'] = BasePod._copy_to_head_args(args, args.polling)
-            parsed_args['tail'] = BasePod._copy_to_tail_args(args, args.polling)
+            parsed_args['head'] = BasePod._copy_to_head_args(args, PollingType.ANY)
+            parsed_args['tail'] = BasePod._copy_to_tail_args(args, PollingType.ANY)
             parsed_args['peas'] = self._set_peas_args(
                 args,
                 head_args=parsed_args['head'],

@@ -3,6 +3,7 @@ DEPRECATED_ARGS_MAPPING = {
     'override_metas': 'uses_metas',
     'override_requests': 'uses_requests',
     'port_expose': 'One of "port" (when starting JinaD or when starting a Client) or "port_jinad" (for a remote Pod)',
+    'parallel': 'replicas',
 }
 
 

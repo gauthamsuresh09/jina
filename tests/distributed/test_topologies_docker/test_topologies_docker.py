@@ -34,18 +34,18 @@ def docker_image():
     client.containers.prune()
 
 
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_r_l_docker(parallels, docker_image, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_r_l_docker(shards, docker_image, mocker):
     response_mock = mocker.Mock()
     f = (
         Flow()
         .add(
             uses=f'docker://{docker_image}',
             host=CLOUD_HOST,
-            parallel=parallels,
+            shards=shards,
             timeout_ready=-1,
         )
-        .add(parallel=parallels)
+        .add(shards=shards)
     )
     with f:
         f.index(
@@ -56,14 +56,14 @@ def test_r_l_docker(parallels, docker_image, mocker):
     response_mock.assert_called()
 
 
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_l_r_docker(parallels, docker_image, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_l_r_docker(shards, docker_image, mocker):
     response_mock = mocker.Mock()
 
     f = (
         Flow()
-        .add(parallel=parallels)
-        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, parallel=parallels)
+        .add(shards=shards)
+        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, shards=shards)
     )
     with f:
         f.index(
@@ -73,15 +73,15 @@ def test_l_r_docker(parallels, docker_image, mocker):
     response_mock.assert_called()
 
 
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_r_l_r_docker(parallels, docker_image, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_r_l_r_docker(shards, docker_image, mocker):
     response_mock = mocker.Mock()
 
     f = (
         Flow()
-        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, parallel=parallels)
+        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, shards=shards)
         .add()
-        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, parallel=parallels)
+        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, shards=shards)
     )
     with f:
         f.index(
@@ -91,15 +91,15 @@ def test_r_l_r_docker(parallels, docker_image, mocker):
     response_mock.assert_called()
 
 
-@pytest.mark.parametrize('parallels', [1])
-def test_r_r_r_docker(parallels, docker_image, mocker):
+@pytest.mark.parametrize('shards', [1])
+def test_r_r_r_docker(shards, docker_image, mocker):
     response_mock = mocker.Mock()
 
     f = (
         Flow()
-        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, parallel=parallels)
-        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, parallel=parallels)
-        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, parallel=parallels)
+        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, shards=shards)
+        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, shards=shards)
+        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, shards=shards)
     )
     with f:
         f.index(
@@ -109,13 +109,13 @@ def test_r_r_r_docker(parallels, docker_image, mocker):
     response_mock.assert_called()
 
 
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_l_r_l_docker(parallels, docker_image, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_l_r_l_docker(shards, docker_image, mocker):
     response_mock = mocker.Mock()
     f = (
         Flow()
         .add()
-        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, parallel=parallels)
+        .add(uses=f'docker://{docker_image}', host=CLOUD_HOST, shards=shards)
         .add()
     )
     with f:

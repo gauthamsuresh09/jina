@@ -22,18 +22,18 @@ NUM_DOCS = 100
 
 
 @pytest.mark.parametrize('silent_log', [True, False])
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_r_l_simple(silent_log, parallels, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_r_l_simple(silent_log, shards, mocker):
     response_mock = mocker.Mock()
     f = (
         Flow()
         .add(
             host=CLOUD_HOST,
-            parallel=parallels,
+            shards=shards,
             quiet_remote_logs=silent_log,
             timeout_ready=-1,
         )
-        .add(parallel=parallels)
+        .add(shards=shards)
     )
     with f:
         f.index(
@@ -45,11 +45,11 @@ def test_r_l_simple(silent_log, parallels, mocker):
     response_mock.assert_called()
 
 
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_l_r_simple(parallels, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_l_r_simple(shards, mocker):
     response_mock = mocker.Mock()
 
-    f = Flow().add(parallel=parallels).add(host=CLOUD_HOST, parallel=parallels)
+    f = Flow().add(shards=shards).add(host=CLOUD_HOST, shards=shards)
     with f:
         f.index(
             inputs=(Document(text='hello') for _ in range(NUM_DOCS)),
@@ -59,15 +59,15 @@ def test_l_r_simple(parallels, mocker):
     response_mock.assert_called()
 
 
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_r_l_r_simple(parallels, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_r_l_r_simple(shards, mocker):
     response_mock = mocker.Mock()
 
     f = (
         Flow()
-        .add(host=CLOUD_HOST, parallel=parallels)
+        .add(host=CLOUD_HOST, shards=shards)
         .add()
-        .add(host=CLOUD_HOST, parallel=parallels)
+        .add(host=CLOUD_HOST, shards=shards)
     )
     with f:
         f.index(
@@ -78,15 +78,15 @@ def test_r_l_r_simple(parallels, mocker):
     response_mock.assert_called()
 
 
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_r_r_r_simple(parallels, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_r_r_r_simple(shards, mocker):
     response_mock = mocker.Mock()
 
     f = (
         Flow()
-        .add(host=CLOUD_HOST, parallel=parallels)
-        .add(host=CLOUD_HOST, parallel=parallels)
-        .add(host=CLOUD_HOST, parallel=parallels)
+        .add(host=CLOUD_HOST, shards=shards)
+        .add(host=CLOUD_HOST, shards=shards)
+        .add(host=CLOUD_HOST, shards=shards)
     )
     with f:
         f.index(
@@ -97,11 +97,11 @@ def test_r_r_r_simple(parallels, mocker):
     response_mock.assert_called()
 
 
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_l_r_l_simple(parallels, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_l_r_l_simple(shards, mocker):
     response_mock = mocker.Mock()
 
-    f = Flow().add().add(host=CLOUD_HOST, parallel=parallels).add()
+    f = Flow().add().add(host=CLOUD_HOST, shards=shards).add()
     with f:
         f.index(
             inputs=(Document(text='hello') for _ in range(NUM_DOCS)),
@@ -112,14 +112,14 @@ def test_l_r_l_simple(parallels, mocker):
 
 
 @pytest.mark.skip('not tested')
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_needs(parallels, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_needs(shards, mocker):
     response_mock = mocker.Mock()
     f = (
         Flow()
-        .add(name='executor1', parallel=parallels)
-        .add(host=CLOUD_HOST, name='executor2', parallel=parallels, needs='gateway')
-        .add(name='executor3', parallel=parallels, needs=['executor1'])
+        .add(name='executor1', shards=shards)
+        .add(host=CLOUD_HOST, name='executor2', shards=shards, needs='gateway')
+        .add(name='executor3', shards=shards, needs=['executor1'])
         .needs_all()
     )
     with f:
@@ -131,19 +131,19 @@ def test_needs(parallels, mocker):
 
 
 @pytest.mark.skip('not tested')
-@pytest.mark.parametrize('parallels', [1, 2])
-def test_complex_needs(parallels, mocker):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_complex_needs(shards, mocker):
     response_mock = mocker.Mock()
     f = (
         Flow()
         .add(name='r1')
         .add(name='r2', host=CLOUD_HOST)
-        .add(name='r3', needs='r1', host=CLOUD_HOST, parallel=parallels)
-        .add(name='r4', needs='r2', parallel=parallels)
+        .add(name='r3', needs='r1', host=CLOUD_HOST, shards=shards)
+        .add(name='r4', needs='r2', shards=shards)
         .add(name='r5', needs='r3')
         .add(name='r6', needs='r4', host=CLOUD_HOST)
-        .add(name='r8', needs='r6', parallel=parallels)
-        .add(name='r9', needs='r5', host=CLOUD_HOST, parallel=parallels)
+        .add(name='r8', needs='r6', shards=shards)
+        .add(name='r9', needs='r5', host=CLOUD_HOST, shards=shards)
         .add(name='r10', needs=['r9', 'r8'])
     )
     with f:
@@ -154,8 +154,8 @@ def test_complex_needs(parallels, mocker):
     response_mock.assert_called()
 
 
-@pytest.mark.parametrize('parallel', [1, 2])
-def test_remote_flow_local_executors(mocker, parallel):
+@pytest.mark.parametrize('shards', [1, 2])
+def test_remote_flow_local_executors(mocker, shards):
 
     client = JinaDClient(host=__default_host__, port=8000)
     workspace_id = client.workspaces.create(paths=[os.path.join(cur_dir, 'yamls')])
@@ -169,7 +169,7 @@ def test_remote_flow_local_executors(mocker, parallel):
     ]:
         response_mock = mocker.Mock()
         flow_id = client.flows.create(
-            workspace_id=workspace_id, filename=flow_yaml, envs={'PARALLEL': parallel}
+            workspace_id=workspace_id, filename=flow_yaml, envs={'shards': shards}
         )
         args = client.flows.get(flow_id)['arguments']['object']['arguments']
         Client(
