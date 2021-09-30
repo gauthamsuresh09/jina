@@ -6,14 +6,14 @@ with:
 executors:
   - name: local_shards
     port_in: 45678
-    parallel: 2
+    shards: 2
   - name: remote_container
     uses: docker://exec
     host: 1.2.3.4
   - name: local_compound
     uses: CustomExecutor
     replicas: 2
-    parallel: 2
+    shards: 2
   - name: local_container_shards
     uses: docker://exec
-    parallel: 2
+    shards: 2

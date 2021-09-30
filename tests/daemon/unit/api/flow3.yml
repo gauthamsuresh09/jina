@@ -7,4 +7,4 @@ with:
 executors:
   - name: local_shards
     port_in: 45678
-    parallel: 2
+    replicas: 2

@@ -157,7 +157,7 @@ class PartialFlowStore(PartialStore):
                     # else, replica-peas would try connecting to head/tail-pea via __docker_host__
                     if (
                         runtime_cls in ['ZEDRuntime', 'GRPCDataRuntime']
-                        and pod.args.parallel > 1
+                        and pod.args.shards > 1
                     ):
                         pod.args.runs_in_docker = False
                         pod.update_pea_args()
