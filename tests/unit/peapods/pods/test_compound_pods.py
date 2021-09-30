@@ -221,14 +221,18 @@ def test_sockets(polling, shards, pea_socket_in):
 
     with CompoundPod(args) as compound_pod:
         head = compound_pod.head_args
+        tail = compound_pod.tail_args
+
         assert compound_pod.args.polling == polling_type
         assert head.socket_in == SocketType.ROUTER_BIND
         if polling_type == PollingType.ANY:
             assert head.socket_out == SocketType.ROUTER_BIND
+            assert tail.num_part == 1
         else:
             assert head.socket_out == SocketType.PUB_BIND
+            assert tail.num_part == shards
         assert head.scheduling == SchedulerType.LOAD_BALANCE
-        tail = compound_pod.tail_args
+
         assert tail.socket_in == SocketType.PULL_BIND
         assert tail.socket_out == SocketType.ROUTER_BIND
         assert tail.scheduling == SchedulerType.LOAD_BALANCE

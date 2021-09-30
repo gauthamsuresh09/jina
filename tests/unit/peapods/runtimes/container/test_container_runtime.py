@@ -196,7 +196,7 @@ def test_tail_host_docker2local_shards():
         .add(name='d11')
     )
     with f:
-        assert getattr(f._pod_nodes['d10'].peas_args['tail'], 'host_out') == defaulthost
+        assert getattr(f._pod_nodes['d10'].tail_args, 'host_out') == defaulthost
 
 
 def test_tail_host_docker2local():
