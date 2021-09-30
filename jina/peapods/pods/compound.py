@@ -40,15 +40,13 @@ class CompoundPod(BasePod, ExitStack):
         self.is_tail_router = True
         self.head_args = BasePod._copy_to_head_args(args, args.polling)
         self.update_tail_args()
-        self.assign_replicas()
+        self.assign_shards()
 
-    def assign_replicas(self):
+    def assign_shards(self):
         """Assign replicas to the CompoundPod"""
         cargs = copy.copy(self.args)
         self.shards = []  # type: List['Pod']
-        self.shards_args = self._set_shard_args(
-            cargs, self.head_args, self.tail_args
-        )
+        self.shards_args = self._set_shard_args(cargs, self.head_args, self.tail_args)
         for _args in self.shards_args:
             if getattr(self.args, 'noblock_on_start', False):
                 _args.noblock_on_start = True
