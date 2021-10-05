@@ -1,6 +1,5 @@
 from http import HTTPStatus
 from pytest_kind import cluster
-from pykube import Pod
 
 # kind version has to be bumped to v0.11.1 since pytest-kind is just using v0.10.0 which does not work on ubuntu in ci
 # TODO don't use pytest-kind anymore
@@ -17,11 +16,16 @@ from jina.peapods.pods.k8slib.kubernetes_tools import (
 )
 
 
-def run_test(flow, logger, k8s_cluster, app_names, endpoint, port_expose):
+def run_test(flow, logger, app_names, expected_replicas, endpoint, port_expose):
     event = multiprocessing.Event()
     watch_process = multiprocessing.Process(
         target=watch_pods,
-        kwargs={'k8s_cluster': k8s_cluster, 'app_names': app_names, 'event': event},
+        kwargs={
+            'flow_name': flow.args.name,
+            'app_names': app_names,
+            'expected_replicas': expected_replicas,
+            'event': event,
+        },
         daemon=True,
     )
     watch_process.start()
@@ -33,13 +37,57 @@ def run_test(flow, logger, k8s_cluster, app_names, endpoint, port_expose):
     return resp
 
 
-def watch_pods(k8s_cluster, flow_name, app_names, event):
+def watch_pods(flow_name, app_names, expected_replicas, event):
     # using Pykube to query pods
-    client = K8sClients()
-    client.core_v1.list_names
+    from jina.logging.logger import JinaLogger
+
+    logger = JinaLogger(f'test_watch_cluster')
+    time.sleep(10)
+    k8s_client = K8sClients()
     while not event.is_set():
-        for app in app_names:
-            logs = k8s_cluster.kubectl([f'get pods -n {flow_name}'])
+        with logger:
+            logger.info(
+                f' Wants to watch pods for the following deployments {app_names}'
+            )
+            try:
+                pods_by_app = dict()
+                for app, expected_repl in zip(app_names, expected_replicas):
+                    api_response = k8s_client.apps_v1.read_namespaced_deployment(
+                        name=app, namespace=flow_name
+                    )
+                    assert api_response.status.replicas == expected_repl
+                    if (
+                        api_response.status.ready_replicas is not None
+                        and api_response.status.ready_replicas == expected_repl
+                    ):
+                        continue
+                    else:
+                        logger.info(f' {app} is not ready')
+                        pods = k8s_client.core_v1.list_namespaced_pod(
+                            namespace=flow_name, label_selector=f"app={app}"
+                        )
+                        pod_names = [item.metadata.name for item in pods.items]
+                        pods_by_app[app] = pod_names
+                for app, pod_names in pods_by_app.items():
+                    for pod_name in pod_names:
+                        logs = k8s_client.core_v1.read_namespaced_pod_log(
+                            name=pod_name, namespace=flow_name
+                        )
+                        status = k8s_client.core_v1.read_namespaced_pod_status(
+                            name=pod_name, namespace=flow_name, pretty=True
+                        )
+                        all = k8s_client.core_v1.read_namespaced_pod(
+                            name=pod_name, namespace=flow_name, pretty=True
+                        )
+                        logger.info(f' \n\n\n =======================\n\n\n')
+                        logger.info(f' app {app}, pod {pod_name}: logs:\n')
+                        logger.info(f' status {status} \n')
+                        logger.info(f' logs {logs} \n')
+                        logger.info(f' all {all} \n')
+            except Exception:
+                continue
+            finally:
+                time.sleep(0.5)
 
 
 def send_dummy_request(endpoint, flow, logger, port_expose):
@@ -147,8 +195,8 @@ def test_flow_with_needs(
     resp = run_test(
         flow,
         logger,
-        k8s_cluster,
-        app_names=['segmenter', 'gateway', 'imageencoder', 'textencoder'],
+        app_names=['gateway', 'segmenter', 'imageencoder', 'textencoder'],
+        expected_replicas=[1, 1, 1, 1],
         endpoint='index',
         port_expose=9090,
     )
@@ -177,8 +225,8 @@ def test_flow_with_init(
     resp = run_test(
         k8s_flow_with_init_container,
         logger,
-        k8s_cluster,
         app_names=['test-executor', 'gateway'],
+        expected_replicas=[1, 1],
         endpoint='search',
         port_expose=9090,
     )
@@ -201,14 +249,14 @@ def test_flow_with_sharding(
     resp = run_test(
         k8s_flow_with_sharding,
         logger,
-        k8s_cluster,
         app_names=[
+            'gateway',
             'test-executor-head',
-            'test-executor-tail',
             'test-executor-0',
             'test-executor-1',
-            'gateway',
+            'test-executor-tail',
         ],
+        expected_replicas=[1, 1, 2, 2, 1],
         endpoint='index',
         port_expose=9090,
     )
