@@ -542,6 +542,29 @@ class Pod(BasePod, ExitFIFO):
         """
         return all(p.is_ready.is_set() for p in self.peas) and self._activated
 
+    def rolling_update(self, dump_path: Optional[str] = None):
+        """Reload all Peas of this Pod.
+
+        :param dump_path: the dump from which to read the data
+        """
+        try:
+            pea_args_idx = 0
+            for i in range(len(self.peas)):
+                pea = self.peas[i]
+                if pea.role == PeaRoleType.PARALLEL:
+                    print(f'close {pea.name}')
+                    pea.close()
+                    _args = self.peas_args['peas'][pea_args_idx]
+                    _args.noblock_on_start = False
+                    _args.dump_path = dump_path
+                    new_pea = BasePea(_args)
+                    self.enter_context(new_pea)
+                    new_pea.activate_runtime()
+                    self.peas[i] = new_pea
+                    pea_args_idx += 1
+        except:
+            raise
+
     @staticmethod
     def _set_peas_args(
         args: Namespace,
@@ -559,8 +582,10 @@ class Pod(BasePod, ExitFIFO):
 
         for idx, pea_host in zip(range(args.replicas), cycle(_host_list)):
             _args = copy.deepcopy(args)
-            _args.pea_id = idx
-
+            _args.pea_id = getattr(
+                _args, 'shard_id', 0
+            )  # This is needed for backwards compatibility
+            _args.replica_id = idx
             if args.replicas > 1:
                 _args.pea_role = PeaRoleType.PARALLEL
                 _args.identity = random_identity()

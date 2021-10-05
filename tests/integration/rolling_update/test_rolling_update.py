@@ -35,7 +35,7 @@ class DummyMarkExecutor(Executor):
     def foo(self, docs, *args, **kwargs):
         for doc in docs:
             doc.tags['replica'] = self.runtime_args.replica_id
-            doc.tags['shard'] = self.runtime_args.pea_id
+            doc.tags['shard'] = self.runtime_args.shard_id
 
     def close(self) -> None:
         import os
@@ -204,10 +204,10 @@ def test_workspace(config, tmpdir, docs):
     ),
 )
 def test_port_configuration(replicas_and_shards):
-    def validate_ports_replica(replica, replica_port_in, replica_port_out, shards):
-        assert replica_port_in == replica.args.port_in
-        assert replica.args.port_out == replica_port_out
-        peas_args = replica.peas_args
+    def validate_ports_replica(shard, replica_port_in, replica_port_out, shards):
+        assert replica_port_in == shard.args.port_in
+        assert shard.args.port_out == replica_port_out
+        peas_args = shard.peas_args
         peas = peas_args['peas']
         assert len(peas) == shards
         if shards == 1:
@@ -218,8 +218,8 @@ def test_port_configuration(replicas_and_shards):
         else:
             shard_head = peas_args['head']
             shard_tail = peas_args['tail']
-            assert replica.args.port_in == shard_head.port_in
-            assert replica.args.port_out == shard_tail.port_out
+            assert shard.args.port_in == shard_head.port_in
+            assert shard.args.port_out == shard_tail.port_out
             for pea in peas:
                 assert shard_head.port_out == pea.port_in
                 assert pea.port_out == shard_tail.port_in
@@ -244,23 +244,23 @@ def test_port_configuration(replicas_and_shards):
                     assert len(pod.peas_args['peas']) == 1
                 else:
                     assert len(pod.peas_args) == 3
-                replica_port_in = pod.args.port_in
-                replica_port_out = pod.args.port_out
+                shard_port_in = pod.args.port_in
+                shard_port_out = pod.args.port_out
             else:
-                replica_port_in = pod.head_args.port_out
-                replica_port_out = pod.tail_args.port_in
+                shard_port_in = pod.head_args.port_out
+                shard_port_out = pod.tail_args.port_in
 
-            assert pod.head_pea.args.port_in == pod.args.port_in
-            assert pod.head_pea.args.port_out == replica_port_in
-            assert pod.tail_pea.args.port_in == replica_port_out
-            assert pod.tail_pea.args.port_out == pod.args.port_out
-            if pod.args.replicas > 1:
-                for replica in pod.replicas:
+            assert pod.head_args.port_in == pod.args.port_in
+            assert pod.head_args.port_out == shard_port_in
+            assert pod.tail_args.port_in == shard_port_out
+            assert pod.tail_args.port_out == pod.args.port_out
+            if pod.args.shards > 1:
+                for shard in pod.shards:
                     validate_ports_replica(
-                        replica,
-                        replica_port_in,
-                        replica_port_out,
-                        getattr(pod.args, 'shards', 1),
+                        shard,
+                        shard_port_in,
+                        shard_port_out,
+                        getattr(pod.args, 'replicas', 1),
                     )
         assert pod
 
@@ -273,8 +273,8 @@ def test_num_peas(config):
         shards=4,
     ) as flow:
         assert flow.num_peas == (
-            3 * (4 + 1 + 1)  # replicas 3  # shards 4  # pod head  # pod tail
+            4 * (3 + 1 + 1)  # shards 4  # replicas 3  # pod head  # pod tail
             + 1  # compound pod head
-            + 1  # compound pod tail
+            + 1  # compound pod tail1
             + 1  # gateway
         )

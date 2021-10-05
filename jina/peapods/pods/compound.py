@@ -257,20 +257,13 @@ class CompoundPod(BasePod, ExitStack):
         return result
 
     def rolling_update(self, dump_path: Optional[str] = None):
-        """Reload all Pods of this Compound Pod.
+        """Reload all Shards of this Compound Pod.
 
         :param dump_path: the dump from which to read the data
         """
         try:
-            for i in range(len(self.shards)):
-                shard = self.shards[i]
-                shard.close()
-                _args = self.shards_args[i]
-                _args.noblock_on_start = False
-                _args.dump_path = dump_path
-                new_shard = Pod(_args)
-                self.enter_context(new_shard)
-                self.shards[i] = new_shard
+            for shard in self.shards:
+                shard.rolling_update(dump_path)
         except:
             raise
 
