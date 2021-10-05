@@ -15,7 +15,7 @@ def helloworld_args(tmpdir):
             '--port-expose',
             '8080',
             '--unblock-query-flow',
-            '--shards',
+            '--replicas',
             '1',
         ]
     )

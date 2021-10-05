@@ -43,7 +43,7 @@ class CompoundPod(BasePod, ExitStack):
         self.assign_shards()
 
     def assign_shards(self):
-        """Assign replicas to the CompoundPod"""
+        """Assign shards to the CompoundPod"""
         cargs = copy.copy(self.args)
         self.shards = []  # type: List['Pod']
         self.shards_args = self._set_shard_args(cargs, self.head_args, self.tail_args)
@@ -110,7 +110,7 @@ class CompoundPod(BasePod, ExitStack):
             self.head_pea = Pea(head_args)
             self._enter_pea(self.head_pea)
             for shard in self.shards:
-                self._enter_replica(shard)
+                self._enter_shard(shard)
             tail_args = self.tail_args
             tail_args.noblock_on_start = True
             self.tail_pea = Pea(tail_args)
@@ -121,7 +121,7 @@ class CompoundPod(BasePod, ExitStack):
                 self.head_pea = Pea(head_args)
                 self._enter_pea(self.head_pea)
                 for shard in self.shards:
-                    self._enter_replica(shard)
+                    self._enter_shard(shard)
                 tail_args = self.tail_args
                 self.tail_pea = Pea(tail_args)
                 self._enter_pea(self.tail_pea)
@@ -150,7 +150,7 @@ class CompoundPod(BasePod, ExitStack):
             self.close()
             raise
 
-    def _enter_replica(self, shard: 'Pod') -> None:
+    def _enter_shard(self, shard: 'Pod') -> None:
         self.enter_context(shard)
 
     def join(self):
@@ -208,7 +208,7 @@ class CompoundPod(BasePod, ExitStack):
         for idx in range(args.shards):
             _args = copy.deepcopy(args)
             pod_host_list = [
-                host for _, host in zip(range(args.replicas), host_generator)
+                host for _, host in zip(range(args.shards), host_generator)
             ]
             _args.peas_hosts = pod_host_list
             _args.shard_id = idx
@@ -237,9 +237,9 @@ class CompoundPod(BasePod, ExitStack):
             _args.socket_out = SocketType.PUSH_CONNECT
 
             _args.dynamic_routing = False
-            # ugly trick to avoid Head of Replica to have wrong host in
+            # ugly trick to avoid Head of shard to have wrong host in
             tmp_args = copy.deepcopy(_args)
-            if _args.replicas > 1:
+            if _args.shards > 1:
                 tmp_args.runs_in_docker = False
                 tmp_args.uses = ''
 
@@ -278,13 +278,13 @@ class CompoundPod(BasePod, ExitStack):
         head_name = self.head_args.name
         tail_name = self.tail_args.name
         pod_names = []
-        for replica in self.replicas:
-            pod_names.append(replica.name)
-            replica_mermaid_graph = replica._mermaid_str
-            replica_mermaid_graph = [
-                node.replace(';', '\n') for node in replica_mermaid_graph
+        for shard in self.shards:
+            pod_names.append(shard.name)
+            shard_mermaid_graph = shard._mermaid_str
+            shard_mermaid_graph = [
+                node.replace(';', '\n') for node in shard_mermaid_graph
             ]
-            mermaid_graph.extend(replica_mermaid_graph)
+            mermaid_graph.extend(shard_mermaid_graph)
             mermaid_graph.append('\n')
 
         for name in pod_names:
