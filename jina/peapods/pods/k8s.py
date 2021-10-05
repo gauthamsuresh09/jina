@@ -441,7 +441,7 @@ class K8sPod(BasePod, ExitFIFO):
             mermaid_graph = [f'subgraph {self.name};\n', f'direction LR;\n']
 
             num_replicas = getattr(self.args, 'replicas', 1)
-            num_shards = getattr(self.args, 'parallel', 1)
+            num_shards = getattr(self.args, 'shards', 1)
             uses = self.args.uses
             if num_shards > 1:
                 shard_names = [
